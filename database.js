@@ -1,3 +1,42 @@
+const mongoose = require('mongoose');
+
+// ===== CONNECT TO MONGODB =====
+async function connectDB() {
+  await mongoose.connect(process.env.MONGO_URI);
+  console.log('MongoDB connected');
+}
+
+// ===== COUNTRY SCHEMA =====
+const countrySchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true, uppercase: true },
+  name: { type: String, required: true, index: true },
+  capital: { type: String, index: true },
+  population: Number,
+  currency: {
+    name: String,
+    code: String,
+    symbol: String
+  },
+  languages: [String],
+  region: String,
+  flag: String,
+  description: String
+}, { timestamps: true });
+
+// ===== API KEY SCHEMA =====
+const apiKeySchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true, uppercase: true },
+  key: { type: String, required: true, unique: true },
+  active: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  revokedAt: { type: Date, default: null }
+});
+
+// ===== MODELS =====
+const Country = mongoose.model('Country', countrySchema);
+const ApiKey = mongoose.model('ApiKey', apiKeySchema);
+
+// ===== AUTO SEED (Converts mledoze format to our schema) =====
 async function autoSeed() {
   const count = await Country.countDocuments();
   if (count > 0) {
@@ -8,9 +47,8 @@ async function autoSeed() {
   console.log('First time: Adding countries to database...');
   const raw = require('./countries.json');
 
-  // Convert mledoze format → our schema
   const countries = raw
-    .filter(c => c.cca2 && c.name && c.name.common)   // skip invalid entries
+    .filter(c => c.cca2 && c.name && c.name.common)
     .map(c => {
       const capital = Array.isArray(c.capital) ? (c.capital[0] || 'N/A') : (c.capital || 'N/A');
       const region = c.region || 'N/A';
@@ -32,7 +70,7 @@ async function autoSeed() {
       // Languages
       const languages = c.languages ? Object.values(c.languages) : ['N/A'];
 
-      // Flag emoji from cca2
+      // Flag
       const flag = c.flag || '🏳️';
 
       return {
@@ -51,3 +89,6 @@ async function autoSeed() {
   await Country.insertMany(countries);
   console.log(countries.length + ' countries saved!');
 }
+
+// ===== EXPORTS (Ye line ZAROORI hai) =====
+module.exports = { connectDB, Country, ApiKey, autoSeed };
